@@ -19,12 +19,12 @@ from PyQt6.QtMultimediaWidgets import QVideoWidget
 
 LSL_STREAM_NAME = "BioRadio_Configuration"     # must match the outlet name in your GUI
 FS = 250                         # sample rate (Hz) - match your device setting
-WINDOW_SECONDS = 0.40            # 400 ms is a common start for EOG gesture windows
+WINDOW_SECONDS = 0.50            # 400 ms is a common start for EOG gesture windows
 
 # Detection logic (tune later)
-PROBA_THRESHOLD = 0.85
+PROBA_THRESHOLD = 0.95
 CONSECUTIVE_HITS = 3
-COOLDOWN_SECONDS = 1.0
+COOLDOWN_SECONDS = 5.0
 
 # Label string in your label encoder that corresponds to eyebrow raise
 # If you’re not sure, run the small debug snippet at the bottom.
@@ -199,31 +199,30 @@ class LSLInferenceThread(QThread):
             x = np.array([feat_dict.get(name, 0.0) for name in self.feature_names], dtype=np.float32).reshape(1, -1)
 
             proba = self.model.predict_proba(x)[0]
-            class_labels = self.le.inverse_transform(np.arange(len(proba)))
+            class_labels = list(self.le.inverse_transform(np.arange(len(proba))))
 
-            # probability of eyebrow class
-            try:
-                idx = list(class_labels).index(self.eyebrow_class)
-                eyebrow_p = float(proba[idx])
-            except ValueError:
-                eyebrow_p = 0.0
+            # Find top prediction
+            top_idx = int(np.argmax(proba))
+            top_label = str(class_labels[top_idx])
+            top_p = float(proba[top_idx])
 
             now = time.time()
 
-            # cooldown gate
+            # --- 5 second cooldown after ANY detected gesture ---
             if (now - self.last_trigger) < COOLDOWN_SECONDS:
-                self.hit_streak = 0
                 continue
 
-            if eyebrow_p >= PROBA_THRESHOLD:
-                self.hit_streak += 1
-            else:
-                self.hit_streak = 0
-
-            if self.hit_streak >= CONSECUTIVE_HITS:
-                self.hit_streak = 0
+            # Only consider non-baseline predictions
+            if top_label != "baseline" and top_p >= PROBA_THRESHOLD:
+                # Trigger buffer immediately (so we don't double-fire)
                 self.last_trigger = now
-                self.eyebrow_detected.emit(now, eyebrow_p)
+
+                # Only eyebrow raise advances video
+                if top_label == self.eyebrow_class:
+                    self.eyebrow_detected.emit(now, top_p)
+
+                # Optional: print debug so you can see what it thought it was
+                print(f"[GESTURE] {top_label} p={top_p:.2f} -> cooldown {COOLDOWN_SECONDS}s")
 
 
 # ---------------------------
