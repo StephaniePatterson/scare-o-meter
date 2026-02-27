@@ -17,7 +17,7 @@ from PyQt6.QtMultimediaWidgets import QVideoWidget
 # USER SETTINGS (EDIT THESE)
 # ---------------------------
 
-LSL_STREAM_NAME = "BioRadio"     # must match the outlet name in your GUI
+LSL_STREAM_NAME = "BioRadio_Configuration"     # must match the outlet name in your GUI
 FS = 250                         # sample rate (Hz) - match your device setting
 WINDOW_SECONDS = 0.40            # 400 ms is a common start for EOG gesture windows
 
@@ -28,7 +28,7 @@ COOLDOWN_SECONDS = 1.0
 
 # Label string in your label encoder that corresponds to eyebrow raise
 # If you’re not sure, run the small debug snippet at the bottom.
-EYEBROW_LABEL_STRING = "raise_eyebrows"
+EYEBROW_LABEL_STRING = "raise_eyebrow"
 
 
 # ---------------------------
